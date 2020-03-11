@@ -1,0 +1,5 @@
+训练命令：
+python quiz-word-recog/train_image_classifier.py --dataset_name=quiz --dataset_dir=./train --checkpoint_path=./inception_v3.ckpt --model_name=inception_v3 --checkpoint_exclude_scopes=InceptionV3/Logits,InceptionV3/Auxlogits --train_dir=./logs --learning_rate=0.001 --optimizer=rmsprop --batch_size=16
+
+查看TensorBoard命令：
+ tensorboard --logdir=./logs
