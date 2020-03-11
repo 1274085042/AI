@@ -20,7 +20,8 @@ https://gitee.com/ai100/quiz-w8-data
 数据集中各目录如下
 - images， 图片目录，数据集中所有图片都在这个目录下面。
 - annotations/xmls, 针对图片中的物体，使用LabelImg工具标注产生的xml文件都在这里，每个xml文件对应一个图片文件，每个xml文件里面包含图片中多个物体的位置和种类信息。     
-
+- labels_items.txt，数据集中的label_map文件  
+  
 ## 准备数据  
 2. 配置环境变量   
    在 .bashrc中添加PYTHONPATH环境变量  
@@ -39,7 +40,7 @@ ImportError: cannot import name string_int_label_map_pb2
 sudo apt-get install protobuf-compiler
 protoc object_detection/protos/*.proto --python_out=.
 ```  
-4.  制作训练record和验证record  
+4.  制作训练tfrecord和验证tfrecord  
 
     `python3 quiz-object-detection/create_data.py --data_dir ./quiz-w8-data/ --label_map_path ./quiz-w8-data/labels_items.txt --output_dir ./`    
 5. 将`quiz-w8-data/labels_items.txt` 拷贝到`data`文件夹
@@ -53,13 +54,32 @@ https://github.com/tensorflow/models/blob/r1.5/research/object_detection/g3doc/d
 6. 下载好的预训练模型在文件夹`ssd_mobilenet_v1_coco_2017_11_17`中  
 7. 将`ssd_mobilenet_v1_coco_2017_11_17`中的`model.ckpt.index、model.ckpt.data-00000-of-00001、model.ckpt.meta`拷贝到`data`文件夹下  
 
-**注意：在data文件夹，已经有准备好的`model.ckpt.index、model.ckpt.data-00000-of-00001、model.ckpt.meta`，上面的6、7步可以省略。**   
+**注意：在data文件夹，已经有准备好的`model.ckpt.index、model.ckpt.data-00000-of-00001、model.ckpt.meta`，上面的6、7步可以省略。**     
+
+现在，data文件包含以下文件：  
+- model.ckpt.data-00000-of-00001  预训练模型相关文件
+- model.ckpt.index  预训练模型相关文件
+- model.ckpt.meta  预训练模型相关文件
+- labels_items.txt  数据集中的label_map文件
+- pet_train.record  数据准备过程中，从原始数据生成的tfrecord格式的数据
+- pet_val.record  数据准备过程中，从原始数据生成的tfrecord格式的数据
+
 
 # 配置文件  
 **8. 配置文件为`data/ssd_mobilenet_v1_pets.config`**     
 * 修改配置文件中的预训练模型路径 [fine_tune_checkpoint](data/ssd_mobilenet_v1_pets.config#L158)   
 * 修改 train_input_reader 中的 [input_path](data/ssd_mobilenet_v1_pets.config#L177)和 [label_map_path](data/ssd_mobilenet_v1_pets.config#L179)
-* 修改 eval_input_reader 中的 [input_path](data/ssd_mobilenet_v1_pets.config#L191)和 [label_map_path](data/ssd_mobilenet_v1_pets.config#L193)
+* 修改 eval_input_reader 中的 [input_path](data/ssd_mobilenet_v1_pets.config#L191)和 [label_map_path](data/ssd_mobilenet_v1_pets.config#L193)  
+* [num_classes](./data/ssd_mobilenet_v1_pets.config#L9) 原文件里面为37,这里的数据集为5
+* [num_examples](data/ssd_mobilenet_v1_pets.config#L183) 这个是验证集中有多少数量的图片，请根据图片数量和数据准备脚本中的生成规则自行计算。
+
+* [num_steps](data/ssd_mobilenet_v1_pets.config#L164) 这个是训练多少step
+* [max_evals](data/ssd_mobilenet_v1_pets.config#L186)，这个是验证每次跑几轮，这里直接改成1即可，即每个训练验证循环只跑一次验证。
+* [eval_input_reader](data/ssd_mobilenet_v1_pets.config#L189) 里面的shuffle， 这个是跟eval步骤的数据reader有关，如果不使用GPU进行训练的话，这里需要从false改成true，不然会导致错误，详细内容参阅 https://github.com/tensorflow/models/issues/1936
+
+根据数据集图片总数all_images_count和batch_size的大小，可以计算出epoch的数量，最后输出模型的质量与epoch的数量密切相关。  
+epoch=(num_step*batch_size)/all_images_count。
+
 
 # 训练  
 **9. `python3 research/object_detection/train.py --train_dir=./train_dir --pipeline_config_path=./data/ssd_mobilenet_v1_pets.config `** 
